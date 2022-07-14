@@ -98,7 +98,6 @@ impl Decode for Time {
       opaque extension_data<0..2^16-1>;
   } Extension;
 */
-#[derive(Debug)]
 struct Extension {
     extension_type: ExtensionType,
     extension_data: Vec<u8>,
@@ -106,7 +105,24 @@ struct Extension {
 
 impl Decode for Extension {
     fn decode(bytes: &mut Cursor<&[u8]>) -> Result<Self, CodecError> {
-        panic!("Not implemented.");
+        let extension_type = ExtensionType::from_u16(u16::decode(bytes)?);
+        let extension_data: Vec<u8> = decode_u16_items(&(), bytes)?;
+
+        Ok(Extension {
+            extension_type,
+            extension_data,
+        })
+    }
+}
+
+impl std::fmt::Debug for Extension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let datalen = self.extension_data.len();
+        let datashort = format!("{:02x}{:02x}...{:02x}{:02x}", &self.extension_data[0], &self.extension_data[1], &self.extension_data[datalen-2], &self.extension_data[datalen-1]);
+        f.debug_struct("Extension")
+            .field("extension_type", &self.extension_type)
+            .field("extension_data", &datashort)
+            .finish()
     }
 }
 
@@ -119,7 +135,18 @@ impl Decode for Extension {
 #[derive(Debug)]
 enum ExtensionType {
     TBD = 0,
+    Test1 = 1, // added here
     TBDmaybeMax = 65535,
+}
+
+impl ExtensionType {
+    fn from_u16(value: u16) -> ExtensionType {
+        match value {
+            0 => ExtensionType::TBD,
+            1 => ExtensionType::Test1,
+            _ => panic!("Unknown value: {}", value),
+        }
+    }
 }
 
 /*
@@ -152,13 +179,13 @@ struct HpkeCiphertext {
 impl std::fmt::Debug for HpkeCiphertext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let enclen = self.enc.len();
-        let foo = format!("{:02x}{:02x}...{:02x}{:02x}", &self.enc[0], &self.enc[1], &self.enc[enclen-2], &self.enc[enclen-1]);
+        let encshort = format!("{:02x}{:02x}...{:02x}{:02x}", &self.enc[0], &self.enc[1], &self.enc[enclen-2], &self.enc[enclen-1]);
         let payloadlen = self.payload.len();
-        let bar = format!("{:02x}{:02x}...{:02x}{:02x}", &self.payload[0], &self.payload[1], &self.payload[payloadlen-2], &self.payload[payloadlen-1]);
+        let payloadshort = format!("{:02x}{:02x}...{:02x}{:02x}", &self.payload[0], &self.payload[1], &self.payload[payloadlen-2], &self.payload[payloadlen-1]);
         f.debug_struct("HpkeCiphertext")
             .field("config_id", &self.config_id)
-            .field("enc", &foo)
-            .field("payload", &bar)
+            .field("enc", &encshort)
+            .field("payload", &payloadshort)
             .finish()
     }
 }
@@ -190,11 +217,22 @@ struct Nonce {
     rand: [u8; 16],
 }
 
+fn u8_array_to_hex(bytes: &[u8]) -> String {
+    let mut result = String::new();
+    let hexdigits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"];
+    for b in bytes {
+        result.push_str(hexdigits[(b>>4) as usize]);
+        result.push_str(hexdigits[(b & 0x0f) as usize]);
+    }
+    result
+}
+
 impl std::fmt::Debug for Nonce {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let randstr = "";
         f.debug_struct("Nonce")
             .field("time", &self.time)
-            .field("rand", &self.rand)
+            .field("rand", &u8_array_to_hex(&self.rand))
             .finish()
     }
 }
@@ -251,45 +289,24 @@ impl Decode for Report {
 
 #[tokio::main]
 async fn main() {
-    // build our application with a single route
-    //let app = Router::new().route("/", get(|| async { "Hello, World!" }));
-
-    // our router
     let app = Router::new()
         .route("/", get(root))
-        .route("/foo", get(get_foo).post(post_foo))
-        .route("/user", get(get_user).post(post_user));
+        .route("/test", get(get_test).post(post_test));
 
-    // which calls one of these handlers
     async fn root() -> &'static str {
         "Hello, World!"
     }
 
-    async fn get_foo() -> &'static str {
+    async fn get_test() -> &'static str {
         "You need to POST something!"
     }
 
-    async fn post_foo(body: body::Bytes) {
-        println!("this is post_foo with body: {:?}", body);
-        //let decoded: Vec<u32> = decode_u16_items(&(), &mut Cursor::new(&body)).unwrap();
+    async fn post_test(body: body::Bytes) {
+        //println!("/test endpoint received POST with this body: {:?}", body);
         let decoded: Report = Report::decode(&mut Cursor::new(&body)).unwrap();
         println!("{:?}", decoded);
     }
 
-    #[derive(Deserialize, Debug)]
-    struct CreateUser {
-        email: String,
-        password: String,
-    }
-    async fn get_user() -> &'static str {
-        "no!"
-    }
-    async fn post_user(Json(payload): Json<CreateUser>) {
-        println!("Payload:\n{:?}", payload);
-        // ...
-    }
-
-    // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
         .await
