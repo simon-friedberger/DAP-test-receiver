@@ -102,6 +102,15 @@ async fn put_report(
         &report.metadata.report_id,
     )
     .or_else(|_| {
+        let vdaf = Prio3SumVec::new_sum_vec(2, 16, 20).expect("Failed to create vdaf!");
+        recover_measurement(
+            vdaf,
+            &pt_shares,
+            &report.public_share,
+            &report.metadata.report_id,
+        )
+    })
+    .or_else(|_| {
         let vdaf = Prio3Sum::new_sum(2, 8).expect("Failed to create vdaf!");
         recover_measurement(
             vdaf,
@@ -112,6 +121,15 @@ async fn put_report(
     })
     .or_else(|_| {
         let vdaf = Prio3Sum::new_sum(2, 6).expect("Failed to create vdaf!");
+        recover_measurement(
+            vdaf,
+            &pt_shares,
+            &report.public_share,
+            &report.metadata.report_id,
+        )
+    })
+    .or_else(|_| {
+        let vdaf = Prio3Sum::new_sum(2, 2).expect("Failed to create vdaf!");
         recover_measurement(
             vdaf,
             &pt_shares,
@@ -164,7 +182,7 @@ fn recover_measurement<T: Vdaf<AggregationParam = ()> + Aggregator<16, 16> + Col
         prep_shares.push(share);
     }
 
-    let prep_msg = vdaf.prepare_preprocess(prep_shares).unwrap();
+    let prep_msg = vdaf.prepare_preprocess(prep_shares)?;
 
     let mut out_shares = vec![vec![]; 2];
     for (agg_id, state) in prep_states.into_iter().enumerate() {
