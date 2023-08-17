@@ -9,7 +9,7 @@ edition = "2021"
 axum = "0.5.11"
 base64 = "0.21.2"
 hpke = "0.10.0"
-prio = "0.12.1"
+prio = "0.12.2"
 rand = "0.8.5"
 serde = "1.0.138"
 tokio = { version = "1.19.2", features = ["full"] }

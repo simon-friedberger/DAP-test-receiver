@@ -8,6 +8,8 @@
 //! The current draft standard with the definition of these structs is available here:
 //! https://github.com/ietf-wg-ppm/draft-ietf-ppm-dap
 
+#![allow(unused)]
+
 use base64::engine::general_purpose;
 use base64::Engine;
 use prio::codec::{
