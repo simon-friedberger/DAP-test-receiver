@@ -48,32 +48,32 @@ pub struct DAPHpkeInfo {
 
 impl DAPHpkeInfo {
     pub fn new(sender: DAPRole, receiver: DAPRole) -> Self {
-        let mut info: Vec<u8> = b"dap-04 input share".iter().copied().collect();
+        let mut info: Vec<u8> = b"dap-04 input share".to_vec();
         info.push(sender.as_byte());
         info.push(receiver.as_byte());
         DAPHpkeInfo { data: info }
     }
 
-    pub fn bytes<'a>(&'a self) -> &'a [u8] {
+    pub fn bytes(&self) -> &[u8] {
         &self.data
     }
 }
 
 #[derive(Debug)]
-pub struct DAPAAD {
+pub struct DapAad {
     data: Vec<u8>,
 }
 
-impl DAPAAD {
-    pub fn new(task_id: &TaskID, metadata: &ReportMetadata, public_share: &Vec<u8>) -> Self {
+impl DapAad {
+    pub fn new(task_id: &TaskID, metadata: &ReportMetadata, public_share: &[u8]) -> Self {
         let mut aad: Vec<u8> = Vec::new();
         task_id.encode(&mut aad);
         metadata.encode(&mut aad);
         encode_u32_items(&mut aad, &(), public_share);
-        DAPAAD { data: aad }
+        DapAad { data: aad }
     }
 
-    pub fn bytes<'a>(&'a self) -> &'a [u8] {
+    pub fn bytes(&self) -> &[u8] {
         &self.data
     }
 }
@@ -85,8 +85,7 @@ pub struct TaskID(pub [u8; 32]);
 
 impl TaskID {
     pub fn base64encoded(&self) -> String {
-        let task_id_base64 = general_purpose::URL_SAFE_NO_PAD.encode(self.0);
-        task_id_base64
+        general_purpose::URL_SAFE_NO_PAD.encode(self.0)
     }
 }
 

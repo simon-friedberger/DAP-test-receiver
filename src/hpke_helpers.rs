@@ -15,7 +15,7 @@ pub fn generate_keypair() -> (Vec<u8>, Vec<u8>) {
 pub fn decrypt(
     privkey: &<X25519HkdfSha256 as Kem>::PrivateKey,
     encapped_key: <X25519HkdfSha256 as Kem>::EncappedKey,
-    ciphertext: &Vec<u8>,
+    ciphertext: &[u8],
     aad: &[u8],
     info: &DAPHpkeInfo,
 ) -> Vec<u8> {

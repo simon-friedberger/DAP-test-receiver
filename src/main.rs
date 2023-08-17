@@ -4,7 +4,6 @@
 use axum::{
     body,
     extract::Path,
-    http::{Request, StatusCode},
     routing::{get, put},
     Extension, Router,
 };
@@ -45,7 +44,7 @@ async fn get_hpke_config(config_id: u8, Extension(state): Extension<State>) -> V
     encode_u16_items(
         &mut bytes,
         &(),
-        &vec![HpkeConfig::new_testing(config_id, pubkeybytes)],
+        &[HpkeConfig::new_testing(config_id, pubkeybytes)],
     );
     bytes
 }
@@ -120,9 +119,7 @@ async fn put_report(
             &report.metadata.report_id,
         )
     })
-    .or_else(|_| {
-        Err("No usable VDAF found.")
-    })
+    .map_err(|_| "No usable VDAF found.")
     .unwrap();
 
     ""
@@ -130,8 +127,8 @@ async fn put_report(
 
 fn recover_measurement<T: Vdaf<AggregationParam = ()> + Aggregator<16, 16> + Collector>(
     vdaf: T,
-    pt_shares: &Vec<PlaintextInputShare>,
-    public_share: &Vec<u8>,
+    pt_shares: &[PlaintextInputShare],
+    public_share: &[u8],
     report_id: &ReportID,
 ) -> Result<(), Box<dyn Error>> {
     let mut input_shares = Vec::new();
@@ -144,7 +141,7 @@ fn recover_measurement<T: Vdaf<AggregationParam = ()> + Aggregator<16, 16> + Col
     }
 
     let public_share: <T as Vdaf>::PublicShare =
-        <T as Vdaf>::PublicShare::get_decoded_with_param(&vdaf, &public_share)
+        <T as Vdaf>::PublicShare::get_decoded_with_param(&vdaf, public_share)
             .expect("Failed to decode public share!");
 
     let mut rng = thread_rng();
@@ -158,7 +155,7 @@ fn recover_measurement<T: Vdaf<AggregationParam = ()> + Aggregator<16, 16> + Col
                 &verify_key,
                 agg_id,
                 &(),
-                &report_id.as_ref(),
+                report_id.as_ref(),
                 &public_share,
                 input_share,
             )
