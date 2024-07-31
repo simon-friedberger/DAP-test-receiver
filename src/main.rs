@@ -8,6 +8,7 @@ use axum::{
     Extension, Router,
 };
 use base64::{engine::general_purpose, Engine};
+use chrono;
 use hpke::{kem::X25519HkdfSha256, Deserializable, Kem};
 use prio::{
     codec::{encode_u16_items, encode_u32_items, Decode, Encode, ParameterizedDecode},
@@ -35,6 +36,7 @@ use hpke_helpers::decrypt;
 type State = Arc<RwLock<HashMap<u8, (Vec<u8>, Vec<u8>)>>>;
 
 async fn get_hpke_config(config_id: u8, Extension(state): Extension<State>) -> Vec<u8> {
+    println!("Somebody wants an HPKE config and they can have it.");
     let mut state_w = state.write().unwrap();
     let keypair = state_w
         .entry(config_id)
@@ -57,7 +59,7 @@ async fn put_report(
 ) -> &'static str {
     let state_r = state.read().unwrap();
 
-    print!("Received report for task {}", task_id);
+    print!("{:?} - Received report for task {}", chrono::offset::Local::now(), task_id);
     let task_id: Vec<u8> = general_purpose::URL_SAFE_NO_PAD
         .decode(task_id)
         .expect("base64 decoding of task ID failed.");
@@ -101,6 +103,15 @@ async fn put_report(
         &report.public_share,
         &report.metadata.report_id,
     )
+    .or_else(|_| {
+        let vdaf = Prio3SumVec::new_sum_vec(2, 8, 20).expect("Failed to create vdaf!");
+        recover_measurement(
+            vdaf,
+            &pt_shares,
+            &report.public_share,
+            &report.metadata.report_id,
+        )
+    })
     .or_else(|_| {
         let vdaf = Prio3SumVec::new_sum_vec(2, 16, 20).expect("Failed to create vdaf!");
         recover_measurement(
